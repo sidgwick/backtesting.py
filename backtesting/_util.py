@@ -35,13 +35,24 @@ def _as_list(value) -> List:
 
 
 def _data_period(index) -> Union[pd.Timedelta, Number]:
-    """Return data index period as pd.Timedelta"""
+    """Return data index period as pd.Timedelta
+    TODO: 这个函数的具体用法, 后面看到了在说
+    """
     values = pd.Series(index[-100:])
+    # values.diff 用来计算序列元素和它的前一个元素之间的差值(结果的第一个值是 NaN)
+    # dropna 去掉非数字
+    # median 求出来中值(中位数)
     return values.diff().dropna().median()
 
 
 class _Array(np.ndarray):
     """
+    _Array 是一个子类化的 NumPy 数组对象.
+
+    这个类是对 np.ndarray 的一层波安装, 提供了一些方便和 pandas 交互的功能.
+
+    `*` 表示之后的参数都是关键字参数.
+
     ndarray extended to supply .name and other arbitrary properties
     in ._opts dict.
     """
@@ -52,6 +63,9 @@ class _Array(np.ndarray):
         return obj
 
     def __array_finalize__(self, obj):
+        '''这个函数是 numpy 使用的: https://numpy.org/doc/stable/user/basics.interoperability.html#returning-foreign-objects
+        简单理解这个方法是在类实例化的时候被调用的, 这里给类追加了两个属性: name 和 _opts
+        '''
         if obj is not None:
             self.name = getattr(obj, 'name', '')
             self._opts = getattr(obj, '_opts', {})
@@ -90,6 +104,7 @@ class _Array(np.ndarray):
 
     @property
     def df(self) -> pd.DataFrame:
+        # TODO: 确认一下当前的数据到底是什么, 为啥这里还需要转置?
         values = np.atleast_2d(np.asarray(self))
         index = self._opts['index'][:values.shape[1]]
         df = pd.DataFrame(values.T, index=index, columns=[self.name] * len(values))
@@ -129,6 +144,8 @@ class _Data:
         self.__cache.clear()
 
     def _update(self):
+        '''假如 self.__df 是一个时间序列的话,
+        这里 __arrays 就是各个 colums 的值, __arrays[__index] 是日期的值'''
         index = self.__df.index.copy()
         self.__arrays = {col: _Array(arr, index=index)
                          for col, arr in self.__df.items()}
@@ -146,12 +163,18 @@ class _Data:
 
     @property
     def df(self) -> pd.DataFrame:
+        # 返回截止到 self.__i 的 DataFrame 数据
         return (self.__df.iloc[:self.__i]
                 if self.__i < len(self.__df)
                 else self.__df)
 
     @property
     def pip(self) -> float:
+        '''TODO: 啥是 pip
+        pip 是外汇交易中的一个术语, 表示价格变动的最小单位. 它通常是货币对的小数点后第四位,
+        例如 EUR/USD 的 pip 就是 0.0001, 在代码中, self.pip 是一个属性, 用于计算
+        数据中 Close 列的 pip 值. 具体实现是通过计算 Close 列中小数点后位数的中位数来确定 pip 的值
+        '''
         if self.__pip is None:
             self.__pip = float(10**-np.median([len(s.partition('.')[-1])
                                                for s in self.__arrays['Close'].astype(str)]))

@@ -6,7 +6,7 @@ def _read_file(filename):
     from os.path import dirname, join
 
     return pd.read_csv(join(dirname(__file__), filename),
-                       index_col=0, parse_dates=True, infer_datetime_format=True)
+                       index_col=0, parse_dates=True)
 
 
 GOOG = _read_file('GOOG.csv')
@@ -19,5 +19,6 @@ EURUSD = _read_file('EURUSD.csv')
 def SMA(arr: pd.Series, n: int) -> pd.Series:
     """
     Returns `n`-period simple moving average of array `arr`.
+    如何为 backtesting.py 设置指标: 提供一个类, 入参是要处理的值序列以及相关的计算参数
     """
     return pd.Series(arr).rolling(n).mean()
